@@ -9,8 +9,6 @@ import android.text.TextUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -40,6 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.SettingsEntity
 import com.example.data.StatsEntity
 import com.example.ui.theme.MyApplicationTheme
@@ -58,7 +58,6 @@ class MainActivity : ComponentActivity() {
             val stats by viewModel.statsState.collectAsStateWithLifecycle()
             val isServiceActive by isServiceActiveState
 
-            // Theme adaptation inside the main application itself - fully consistent with the select theme!
             CustomThemeWrapper(themeName = settings.themeName) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -116,17 +115,50 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun CustomThemeWrapper(themeName: String, content: @Composable () -> Unit) {
     MyApplicationTheme(
-        darkTheme = (themeName == "ELITE") || isSystemInDarkTheme(),
+        darkTheme = true, // Force amoled-supporting dark palettes across all selections
         dynamicColor = false,
         content = content
     )
 }
 
+// Custom AMOLED optimized background palettes to eliminate battery drain and maximize eye-safety
 fun getThemeBackgroundColor(theme: String): Color {
     return when (theme) {
-        "MINIMAL" -> Color(0xFFFAFAFA)
-        "ELITE" -> Color(0xFF020503) // Hack style pure obsidian
-        else -> Color(0xFFF9FAFB) // Gamified light clean background with bright overlays
+        "MINIMAL" -> Color(0xFF0C0C0E) // Obsidian Slate
+        "ELITE" -> Color(0xFF000000)   // Zero Matrix Space Black
+        else -> Color(0xFF0B0813)      // Velvet Midnight Orchid
+    }
+}
+
+fun getThemeCardBackgroundColor(theme: String): Color {
+    return when (theme) {
+        "MINIMAL" -> Color(0xFF16161A) // Elegant Dark Slate Card
+        "ELITE" -> Color(0xFF060A07)   // Terminal green matrix card
+        else -> Color(0xFF151025)      // Luxurious Translucent Space Orchid Card
+    }
+}
+
+fun getThemeAccentColor(theme: String): Color {
+    return when (theme) {
+        "MINIMAL" -> Color(0xFFABC8F7) // Silent Soft Blue
+        "ELITE" -> Color(0xFF00FF66)   // Cyber matrix green
+        else -> Color(0xFFD495FF)      // Amethyst lilac orchid
+    }
+}
+
+fun getThemeTextColor(theme: String): Color {
+    return when (theme) {
+        "ELITE" -> Color(0xFF00FF66)
+        "MINIMAL" -> Color(0xFFE2E2E2)
+        else -> Color(0xFFF5E1FF)
+    }
+}
+
+fun getThemeSubtextColor(theme: String): Color {
+    return when (theme) {
+        "ELITE" -> Color(0xFF05AA3D)
+        "MINIMAL" -> Color(0xFF8D9199)
+        else -> Color(0xFFB1A9CD)
     }
 }
 
@@ -147,9 +179,9 @@ fun MainScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // App banner with dynamic theme accent
         AppHeaderBanner(theme)
@@ -163,12 +195,12 @@ fun MainScreen(
         )
 
         Divider(
-            color = getThemeAccentColor(theme).copy(alpha = 0.2f),
+            color = getThemeAccentColor(theme).copy(alpha = 0.15f),
             thickness = 1.dp,
             modifier = Modifier.padding(vertical = 4.dp)
         )
 
-        // Animated Screen view switcher
+        // Switcher with smooth transitional fade
         AnimatedContent(
             targetState = selectedTab,
             transitionSpec = {
@@ -202,45 +234,53 @@ fun MainScreen(
 @Composable
 fun AppHeaderBanner(theme: String) {
     val accent = getThemeAccentColor(theme)
+    val cardBg = getThemeCardBackgroundColor(theme)
+    val text = getThemeTextColor(theme)
+    val subtext = getThemeSubtextColor(theme)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (theme == "ELITE") Color(0xFF09110B) else accent.copy(alpha = 0.08f)
-            )
+            .clip(RoundedCornerShape(28.dp))
+            .background(cardBg)
             .border(
-                BorderStroke(1.dp, accent.copy(alpha = 0.3f)),
-                RoundedCornerShape(16.dp)
+                BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
+                RoundedCornerShape(28.dp)
             )
-            .padding(16.dp),
+            .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = when (theme) {
-                "MINIMAL" -> Icons.Default.Circle
-                "ELITE" -> Icons.Default.Code
-                else -> Icons.Default.TouchApp
-            },
-            contentDescription = "App Icon",
-            tint = accent,
+        Box(
             modifier = Modifier
                 .size(48.dp)
-                .padding(4.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
+                .clip(CircleShape)
+                .background(accent.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = when (theme) {
+                    "MINIMAL" -> Icons.Default.Circle
+                    "ELITE" -> Icons.Default.Code
+                    else -> Icons.Default.TouchApp
+                },
+                contentDescription = "App Icon",
+                tint = accent,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(
-                text = "Button Savior",
+                text = "Silent Motion",
                 fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (theme == "ELITE") Color(0xFF00FF66) else MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                color = text,
                 fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
             )
             Text(
-                text = "Alternative Touch overlay for broken buttons",
+                text = "Adaptive alternative touch navigator",
                 fontSize = 12.sp,
-                color = Color.Gray,
+                color = subtext,
                 fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
             )
         }
@@ -255,15 +295,15 @@ fun TabSelector(
     theme: String
 ) {
     val accent = getThemeAccentColor(theme)
+    val containerBg = getThemeCardBackgroundColor(theme).copy(alpha = 0.8f)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (theme == "ELITE") Color(0xFF070B08) else Color(0xFFF1F5F9)
-            )
-            .padding(4.dp),
+            .clip(RoundedCornerShape(32.dp))
+            .background(containerBg)
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.15f)), RoundedCornerShape(32.dp))
+            .padding(6.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         tabs.forEachIndexed { index, title ->
@@ -271,24 +311,23 @@ fun TabSelector(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(
-                        if (isSelected) {
-                            if (theme == "ELITE") Color(0xFF142418) else accent
-                        } else Color.Transparent
+                        if (isSelected) accent else Color.Transparent
                     )
                     .clickable { onTabSelected(index) }
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = title,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isSelected) {
-                        if (theme == "ELITE") Color(0xFF00FF66) else Color.White
+                        if (theme == "ELITE") Color.Black else getThemeBackgroundColor(theme)
                     } else {
-                        Color.Gray
+                        getThemeSubtextColor(theme)
                     },
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
@@ -306,185 +345,383 @@ fun DashboardPane(
     theme: String
 ) {
     val accent = getThemeAccentColor(theme)
+    val cardBg = getThemeCardBackgroundColor(theme)
+    val text = getThemeTextColor(theme)
+    val subtext = getThemeSubtextColor(theme)
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Accessibility Status Card
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    if (theme == "ELITE") {
-                        if (isServiceActive) Color(0xFF0E2214) else Color(0xFF1F0D0D)
-                    } else {
-                        if (isServiceActive) Color(0xFFECFDF5) else Color(0xFFFEF2F2)
-                    }
-                )
-                .border(
-                    BorderStroke(
-                        1.5.dp,
-                        if (isServiceActive) Color(0xFF10B981) else Color(0xFFEF4444)
-                    ),
-                    RoundedCornerShape(20.dp)
-                )
-                .padding(20.dp)
-        ) {
+        // Condition 1: INACTIVE Service - Launch Obstacle, Guide through the "Onboarding/Getting Setup Wizard"
+        if (!isServiceActive) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(cardBg)
+                    .border(BorderStroke(1.5.dp, accent.copy(alpha = 0.25f)), RoundedCornerShape(28.dp))
+                    .padding(24.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val pulse = rememberInfiniteTransition(label = "pulse")
-                    val alphaState by pulse.animateFloat(
-                        initialValue = 0.4f,
-                        targetValue = 1f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1000, easing = LinearEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "pulser"
-                    )
-
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
-                            .alpha(alphaState)
+                            .size(10.dp)
                             .clip(CircleShape)
-                            .background(if (isServiceActive) Color(0xFF10B981) else Color(0xFFEF4444))
+                            .background(Color(0xFFEF4444))
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isServiceActive) "SERVICE STATUS: ACTIVE" else "SERVICE STATUS: INACTIVE",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isServiceActive) Color(0xFF047857) else Color(0xFFB91C1C),
+                        "GETTING SETUP wizard",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFEF4444),
                         fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                     )
                 }
 
                 Text(
-                    text = if (isServiceActive) {
-                        "Your virtual touch-based navigator overlay is currently drawing over other screens. It is ready to receive taps!"
-                    } else {
-                        "The navigation overlay helper requires Accessibility permissions so it can perform system actions (Back, Home, Recents) on your behalf."
-                    },
-                    fontSize = 12.sp,
-                    color = if (theme == "ELITE") Color.Gray else Color.DarkGray,
+                    "Authorize accessibility overlay and displays so the visual gesture trigger panels can draw seamlessly over native views.",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = text,
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
+
+                // Mock Stepper Track Progress
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape).background(accent))
+                    Box(modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape).background(accent.copy(alpha = 0.2f)))
+                    Box(modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape).background(accent.copy(alpha = 0.2f)))
+                    Box(modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape).background(accent.copy(alpha = 0.2f)))
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Active Steps Box
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Step 1: Active
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(accent.copy(alpha = 0.08f))
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessibilityNew,
+                            contentDescription = "Step 1",
+                            tint = accent,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Step 1: Allow Gesture Controls",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = text,
+                                fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                            )
+                            Text(
+                                "Grant secondary touch overlay control permissions",
+                                fontSize = 10.sp,
+                                color = subtext,
+                                fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                            )
+                        }
+                    }
+
+                    // Pre-locked Steps 2, 3, 4 Faded Mock Indicators
+                    listOf(
+                        "Step 2: Display Over Other Apps" to Icons.Default.Layers,
+                        "Step 3: Battery Optimization Safe" to Icons.Default.BatteryChargingFull,
+                        "Step 4: Configure Exclusion Apps" to Icons.Default.AppBlocking
+                    ).forEach { stepPair ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .alpha(0.4f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = stepPair.second,
+                                contentDescription = "Locked",
+                                tint = subtext,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    stepPair.first,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = text,
+                                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                                )
+                                Text(
+                                    "Pending Step 1 completion",
+                                    fontSize = 9.sp,
+                                    color = subtext,
+                                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                                )
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.Lock, "Lock", tint = subtext, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
 
                 Button(
                     onClick = onOpenSettingsClick,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isServiceActive) Color(0xFF10B981) else Color(0xFFEF4444)
+                        containerColor = accent,
+                        contentColor = if (theme == "ELITE") Color.Black else getThemeBackgroundColor(theme)
                     ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isServiceActive) Icons.Default.CheckCircle else Icons.Default.Settings,
-                        contentDescription = "Settings Icon",
-                        tint = Color.White
-                    )
+                    Icon(Icons.Default.Settings, "Enable")
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isServiceActive) "Go to Accessibility Settings" else "Enable Savior Overlay Service",
-                        fontSize = 12.sp,
+                        "Grant Service Access",
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                    )
+                }
+            }
+        } else {
+            // Condition 2: ACTIVE Status Card with Radiant Glow
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(cardBg)
+                    .border(BorderStroke(1.5.dp, Color(0xFF10B981).copy(alpha = 0.4f)), RoundedCornerShape(28.dp))
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val pulse = rememberInfiniteTransition(label = "pulse")
+                        val alphaState by pulse.animateFloat(
+                            initialValue = 0.4f,
+                            targetValue = 1.0f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1100, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pulser"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .alpha(alphaState)
+                                .clip(CircleShape)
+                                .background(Color(0xFF10B981))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "TOUCH HELPER ACTIVE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF10B981),
+                            fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                        )
+                    }
+
+                    Badge(containerColor = Color(0xFF10B981).copy(alpha = 0.15f)) {
+                        Text(
+                            "RUNNING",
+                            color = Color(0xFF10B981),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                        )
+                    }
+                }
+
+                Text(
+                    "Your virtual savior touch-trigger is live on screen. Tap or swipe edges dynamically to simulate critical navigation tasks instantly.",
+                    fontSize = 13.sp,
+                    color = subtext,
+                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                )
+
+                // 3-Column Indicator Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        "Engine" to "Active",
+                        "Accessibility" to "Granted",
+                        "Calibration" to "Optimal"
+                    ).forEach { indicator ->
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(accent.copy(alpha = 0.05f))
+                                .border(BorderStroke(1.dp, accent.copy(alpha = 0.1f)), RoundedCornerShape(16.dp))
+                                .padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                indicator.first,
+                                fontSize = 9.sp,
+                                color = subtext,
+                                fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                indicator.second,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accent,
+                                fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = onOpenSettingsClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E293B),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Icon(Icons.Default.SettingsAccessibility, "Accessibility")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Manage Accessibility Support",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                     )
                 }
             }
         }
 
-        // Live Preview of custom floating button appearance
+        // Live Preview Frame Card
+        VisualLivePreviewSection(theme = theme, settings = settings)
+
+        // Sandbox simulated interactive tester
+        InteractiveSandboxPanel(theme = theme, viewModel = viewModel, shortcuts = settings.enabledShortcuts)
+    }
+}
+
+@Composable
+fun VisualLivePreviewSection(theme: String, settings: SettingsEntity) {
+    val accent = getThemeAccentColor(theme)
+    val cardBg = getThemeCardBackgroundColor(theme)
+    val text = getThemeTextColor(theme)
+    val subtext = getThemeSubtextColor(theme)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(cardBg)
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.15f)), RoundedCornerShape(28.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            "Floating Trigger Preview",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = text,
+            fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        val sizeDp = settings.buttonSizeDp.dp
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .size(sizeDp)
+                .alpha(settings.buttonOpacity)
+                .clip(CircleShape)
                 .background(
-                    if (theme == "ELITE") Color(0xFF060B07) else Color(0xFFF8FAFC)
+                    when (theme) {
+                        "MINIMAL" -> Brush.verticalGradient(listOf(Color(0xFF2E2E2E), Color(0xFF141414)))
+                        "ELITE" -> Brush.verticalGradient(listOf(Color(0xFF0B140E), Color(0xFF020503)))
+                        else -> Brush.verticalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFEC4899)))
+                    }
                 )
-                .border(BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)), RoundedCornerShape(16.dp))
-                .padding(16.dp),
+                .border(
+                    BorderStroke(2.dp, if (theme == "ELITE") Color(0xFF00FF66) else Color.White),
+                    CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    "Visual Overlay Preview",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
-                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val sizeDp = settings.buttonSizeDp.dp
-                Box(
-                    modifier = Modifier
-                        .size(sizeDp)
-                        .alpha(settings.buttonOpacity)
-                        .clip(CircleShape)
-                        .background(
-                            when (theme) {
-                                "MINIMAL" -> Brush.verticalGradient(listOf(Color(0xFF2E2E2E), Color(0xFF141414)))
-                                "ELITE" -> Brush.verticalGradient(listOf(Color(0xFF0B140E), Color(0xFF020503)))
-                                else -> Brush.verticalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFEC4899)))
-                            }
-                        )
-                        .border(
-                            BorderStroke(2.dp, if (theme == "ELITE") Color(0xFF00FF66) else Color.White),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when (theme) {
-                        "MINIMAL" -> Box(modifier = Modifier.size(sizeDp / 3).clip(CircleShape).background(Color.White))
-                        "ELITE" -> Icon(Icons.Default.Code, "Menu", tint = Color(0xFF00FF66), modifier = Modifier.size(sizeDp / 2))
-                        else -> Icon(Icons.Default.TouchApp, "Menu", tint = Color.White, modifier = Modifier.size(sizeDp * 0.55f))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "Selected Theme: $theme (Size: ${settings.buttonSizeDp}dp, Opacity: ${(settings.buttonOpacity * 100).toInt()}%)",
-                    fontSize = 11.sp,
-                    color = Color.Gray,
-                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
-                )
+            when (theme) {
+                "MINIMAL" -> Box(modifier = Modifier.size(sizeDp / 3).clip(CircleShape).background(Color.White))
+                "ELITE" -> Icon(Icons.Default.Code, "Menu", tint = Color(0xFF00FF66), modifier = Modifier.size(sizeDp / 2))
+                else -> Icon(Icons.Default.TouchApp, "Menu", tint = Color.White, modifier = Modifier.size(sizeDp * 0.55f))
             }
         }
 
-        // Sandbox simulated touch panel box so they can click buttons (simulating triggers and incrementing counters)
-        InteractiveSandboxPanel(theme = theme, viewModel = viewModel, shortcuts = settings.enabledShortcuts)
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            "Selected Theme: $theme (Size: ${settings.buttonSizeDp}dp, Opacity: ${(settings.buttonOpacity * 100).toInt()}%)",
+            fontSize = 11.sp,
+            color = subtext,
+            fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+        )
     }
 }
 
 @Composable
 fun InteractiveSandboxPanel(theme: String, viewModel: MainViewModel, shortcuts: String) {
     val accent = getThemeAccentColor(theme)
+    val cardBg = getThemeCardBackgroundColor(theme)
+    val text = getThemeTextColor(theme)
+    val subtext = getThemeSubtextColor(theme)
     val shortcutList = shortcuts.split(",")
 
+    var lastSimulatedAction by remember { mutableStateOf<String?>(null) }
+    var interactionCount by remember { mutableIntStateOf(0) }
+
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (theme == "ELITE") Color(0xFF050805) else MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        shape = RoundedCornerShape(28.dp),
         border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -496,61 +733,58 @@ fun InteractiveSandboxPanel(theme: String, viewModel: MainViewModel, shortcuts: 
             )
 
             Text(
-                text = "Tap any simulator button to test overlay trigger animations and immediately feed the Impact Statistics dashboard with usage counts!",
+                text = "Tap simulated coordinates to calibrate overlay trigger paths and verify click logs without leaving settings.",
                 fontSize = 11.sp,
-                color = Color.Gray,
+                color = subtext,
                 textAlign = TextAlign.Center,
                 fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Simulating button options
             val testButtons = listOf(
-                Triple("BACK", "Back Click", Icons.AutoMirrored.Filled.ArrowBack),
-                Triple("HOME", "Home Click", Icons.Default.Home),
-                Triple("RECENTS", "Recents Click", Icons.Default.Menu),
+                Triple("BACK", "Back", Icons.AutoMirrored.Filled.ArrowBack),
+                Triple("HOME", "Home", Icons.Default.Home),
+                Triple("RECENTS", "Recents", Icons.Default.Menu),
                 Triple("NOTIFICATIONS", "Notification", Icons.Default.Notifications),
-                Triple("LOCK_SCREEN", "Screen Lock", Icons.Default.Lock),
+                Triple("LOCK_SCREEN", "Lock Screen", Icons.Default.Lock),
                 Triple("VOLUME_UP", "Raise Vol", Icons.Default.VolumeUp)
             )
 
-            var lastSimulatedAction by remember { mutableStateOf<String?>(null) }
-
-            val rows = testButtons.chunked(3)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (row in rows) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                testButtons.chunked(3).forEach { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         for (btn in row) {
                             val isConfigured = shortcutList.contains(btn.first)
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
                                 modifier = Modifier
-                                    .width(86.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .weight(1f)
+                                    .height(72.dp)
+                                    .clip(RoundedCornerShape(20.dp))
                                     .background(
-                                        if (theme == "ELITE") Color(0xFF0E1A11) else Color(0xFFF1F5F9)
+                                        if (isConfigured) accent.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.02f)
                                     )
                                     .border(
                                         BorderStroke(
                                             1.dp,
-                                            if (isConfigured) accent.copy(alpha = 0.5f) else Color.Transparent
+                                            if (isConfigured) accent.copy(alpha = 0.4f) else accent.copy(alpha = 0.1f)
                                         ),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(20.dp)
                                     )
                                     .clickable {
                                         viewModel.simulateActionClick(btn.first)
                                         lastSimulatedAction = btn.second
+                                        interactionCount++
                                     }
                                     .padding(8.dp)
                             ) {
                                 Icon(
                                     imageVector = btn.third,
                                     contentDescription = btn.second,
-                                    tint = if (isConfigured) accent else Color.Gray,
+                                    tint = if (isConfigured) accent else subtext,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -558,7 +792,7 @@ fun InteractiveSandboxPanel(theme: String, viewModel: MainViewModel, shortcuts: 
                                     btn.second,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (theme == "ELITE") Color(0xFF00FF66) else Color.DarkGray,
+                                    color = text,
                                     textAlign = TextAlign.Center,
                                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                                 )
@@ -573,19 +807,26 @@ fun InteractiveSandboxPanel(theme: String, viewModel: MainViewModel, shortcuts: 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .padding(top = 4.dp)
+                            .clip(RoundedCornerShape(16.dp))
                             .background(accent.copy(alpha = 0.1f))
-                            .padding(8.dp),
+                            .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "Simulated action triggered: $action! (+1 Impact Stat registered)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (theme == "ELITE") Color(0xFF00FF66) else Color.DarkGray,
-                            fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Check, "Checked", tint = accent, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Simulated touch registered: $action (+1 Save Logged)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accent,
+                                fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                            )
+                        }
                     }
                 }
             }
@@ -600,23 +841,131 @@ fun CustomizationPane(
     theme: String
 ) {
     val accent = getThemeAccentColor(theme)
+    val cardBg = getThemeCardBackgroundColor(theme)
+    val text = getThemeTextColor(theme)
+    val subtext = getThemeSubtextColor(theme)
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Theme Selector Card
+        // High-Fidelity Phone Screen Visual Mock Preview (from Mockup Customization guidelines)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(28.dp))
+                .background(cardBg)
+                .border(BorderStroke(1.dp, accent.copy(alpha = 0.15f)), RoundedCornerShape(28.dp))
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "Dynamic Edge Zone Preview",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = text,
+                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                )
+
+                // Render Smartphone Device Outline Box
+                Box(
+                    modifier = Modifier
+                        .width(190.dp)
+                        .height(340.dp)
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(Color(0xFF000000))
+                        .border(BorderStroke(6.dp, Color(0xFF2E2E33)), RoundedCornerShape(32.dp))
+                ) {
+                    // Mobile Abstract wallpaper gradient background inside device outline
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        cardBg,
+                                        accent.copy(alpha = 0.15f),
+                                        Color.Black
+                                    )
+                                )
+                            )
+                    ) {
+                        // Notch speaker mock
+                        Box(
+                            modifier = Modifier
+                                .width(64.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
+                                .background(Color(0xFF2E2E33))
+                                .align(Alignment.TopCenter)
+                        )
+
+                        // Dynamic Left Edge Zone highlighting Size & Opacity Custom values
+                        val previewWidth = (settings.buttonSizeDp.toFloat() / 90f * 24f).dp
+                        val previewAlpha = settings.buttonOpacity
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(previewWidth)
+                                .alpha(previewAlpha)
+                                .align(Alignment.CenterStart)
+                                .background(accent.copy(alpha = 0.3f))
+                                .border(BorderStroke(1.dp, accent), RoundedCornerShape(0.dp))
+                        )
+
+                        // Dynamic Right Edge Zone highlighting Size & Opacity Custom values
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(previewWidth)
+                                .alpha(previewAlpha)
+                                .align(Alignment.CenterEnd)
+                                .background(accent.copy(alpha = 0.3f))
+                                .border(BorderStroke(1.dp, accent), RoundedCornerShape(0.dp))
+                        )
+
+                        // Center content label inside smartphone preview
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Swipe,
+                                "Swipe",
+                                tint = accent.copy(alpha = previewAlpha.coerceAtLeast(0.4f)),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    "Left/Right borders highlight edge gesture ranges",
+                    fontSize = 10.sp,
+                    color = subtext,
+                    fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
+                )
+            }
+        }
+
+        // Theme Selections Options
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (theme == "ELITE") Color(0xFF050805) else MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, accent.copy(alpha = 0.15f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     "Aesthetic & Visual Theme",
@@ -628,37 +977,36 @@ fun CustomizationPane(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     listOf("MINIMAL", "GAMIFIED", "ELITE").forEach { themeOption ->
                         val isSelected = settings.themeName == themeOption
+                        val optAccent = getThemeAccentColor(themeOption)
+                        val optionBg = getThemeCardBackgroundColor(themeOption)
+
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(20.dp))
                                 .background(
-                                    if (isSelected) {
-                                        if (themeOption == "ELITE") Color(0xFF142418) else getThemeAccentColor(themeOption).copy(alpha = 0.15f)
-                                    } else {
-                                        if (theme == "ELITE") Color(0xFF0D120E) else Color(0xFFF8FAFC)
-                                    }
+                                    if (isSelected) optAccent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.02f)
                                 )
                                 .border(
                                     BorderStroke(
                                         2.dp,
-                                        if (isSelected) getThemeAccentColor(themeOption) else Color.Transparent
+                                        if (isSelected) optAccent else Color.Transparent
                                     ),
-                                    RoundedCornerShape(12.dp)
+                                    RoundedCornerShape(20.dp)
                                 )
                                 .clickable { viewModel.updateTheme(themeOption) }
-                                .padding(12.dp),
+                                .padding(14.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 text = themeOption,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) getThemeAccentColor(themeOption) else Color.Gray,
+                                color = if (isSelected) optAccent else text.copy(alpha = 0.6f),
                                 fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -669,7 +1017,7 @@ fun CustomizationPane(
                                     else -> "Playful pink"
                                 },
                                 fontSize = 9.sp,
-                                color = Color.Gray,
+                                color = subtext,
                                 textAlign = TextAlign.Center,
                                 fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                             )
@@ -679,18 +1027,16 @@ fun CustomizationPane(
             }
         }
 
-        // Overlay Button Size & Opacity Customizer Slider Card
+        // Dimensional Customization Card
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (theme == "ELITE") Color(0xFF050805) else MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, accent.copy(alpha = 0.15f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
                     "Dimensions & Opacity",
@@ -700,17 +1046,17 @@ fun CustomizationPane(
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
 
-                // Size Slider
+                // Slider 1: Dimension
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "Floating Button Size",
+                            "Edge Trigger Zone Range",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (theme == "ELITE") Color.Gray else Color.DarkGray,
+                            color = text,
                             fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                         )
                         Text(
@@ -727,22 +1073,23 @@ fun CustomizationPane(
                         valueRange = 40f..90f,
                         colors = SliderDefaults.colors(
                             thumbColor = accent,
-                            activeTrackColor = accent
+                            activeTrackColor = accent,
+                            inactiveTrackColor = accent.copy(alpha = 0.15f)
                         )
                     )
                 }
 
-                // Opacity Slider
+                // Slider 2: Opacity
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "Resting Opacity Transparency",
+                            "Resting Alpha Visibility",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (theme == "ELITE") Color.Gray else Color.DarkGray,
+                            color = text,
                             fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                         )
                         Text(
@@ -759,28 +1106,27 @@ fun CustomizationPane(
                         valueRange = 0.2f..1f,
                         colors = SliderDefaults.colors(
                             thumbColor = accent,
-                            activeTrackColor = accent
+                            activeTrackColor = accent,
+                            inactiveTrackColor = accent.copy(alpha = 0.15f)
                         )
                     )
                 }
             }
         }
 
-        // Action Panel Shortcuts Customizer Card
+        // Save & Shortcuts Setup Checklist
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (theme == "ELITE") Color(0xFF050805) else MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, accent.copy(alpha = 0.15f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    "Save & Customize Virtual Shortcuts",
+                    "Customize Panel Shortcuts",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = accent,
@@ -788,21 +1134,21 @@ fun CustomizationPane(
                 )
 
                 Text(
-                    "Activate or deactivate virtual shortcuts displayed inside the floating panel overlay when tapped:",
+                    "Assign virtual tasks displayed inside the floating helper overlays when tapped on your screen edges:",
                     fontSize = 11.sp,
-                    color = Color.Gray,
+                    color = subtext,
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
 
                 val shortcutsConfig = listOf(
-                    "BACK" to "Virtual 'Back' touch",
-                    "HOME" to "Virtual 'Home' touch",
-                    "RECENTS" to "Virtual 'Recents' touch",
-                    "NOTIFICATIONS" to "Pull Notification Drawer",
-                    "QUICK_SETTINGS" to "Settings Tuner Panel",
-                    "LOCK_SCREEN" to "Screen Off lock shortcut",
-                    "VOLUME_UP" to "Digital sound louder",
-                    "VOLUME_DOWN" to "Digital sound quiet"
+                    "BACK" to "Virtual edge 'Back' trigger",
+                    "HOME" to "Virtual 'Home' screen shortcut",
+                    "RECENTS" to "Open Recents apps list overlay",
+                    "NOTIFICATIONS" to "Simulate Notification drawer pull down",
+                    "QUICK_SETTINGS" to "Access quick system configuration tuner",
+                    "LOCK_SCREEN" to "Put device screen off to sleep mode",
+                    "VOLUME_UP" to "Digital raise system volume booster",
+                    "VOLUME_DOWN" to "Digital lower system volume"
                 )
 
                 val activeList = settings.enabledShortcuts.split(",")
@@ -822,19 +1168,19 @@ fun CustomizationPane(
                                 onCheckedChange = { viewModel.toggleShortcut(item.first) },
                                 colors = CheckboxDefaults.colors(checkedColor = accent)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
                                     item.first,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (theme == "ELITE") Color.LightGray else Color.Black,
+                                    color = text,
                                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                                 )
                                 Text(
                                     item.second,
                                     fontSize = 10.sp,
-                                    color = Color.Gray,
+                                    color = subtext,
                                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                                 )
                             }
@@ -842,10 +1188,10 @@ fun CustomizationPane(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider(color = accent.copy(alpha = 0.15f))
 
-                // Vibration Haptics Toggle Row
+                // Action Haptic tactile toggle row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -856,16 +1202,16 @@ fun CustomizationPane(
                 ) {
                     Column {
                         Text(
-                            "Tactile Vibration Feedback",
+                            "Tactile Vibration feedback",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (theme == "ELITE") Color.LightGray else Color.Black,
+                            color = text,
                             fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                         )
                         Text(
-                            "Produce micro vibration on active finger tap",
+                            "Vibrate briefly on active coordinate taps",
                             fontSize = 10.sp,
-                            color = Color.Gray,
+                            color = subtext,
                             fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                         )
                     }
@@ -890,30 +1236,30 @@ fun StatsPane(
     theme: String
 ) {
     val accent = getThemeAccentColor(theme)
+    val cardBg = getThemeCardBackgroundColor(theme)
+    val text = getThemeTextColor(theme)
+    val subtext = getThemeSubtextColor(theme)
 
-    // Calculate total clicks saved on physical buttons
     val totalClicks = stats.sumOf { it.count }
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         // Core counter impact card
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (theme == "ELITE") Color(0xFF0C130D) else accent.copy(alpha = 0.05f)
-            ),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.5.dp, accent),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.5.dp, accent.copy(alpha = 0.4f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "HARDWARE IMPACT INTEGRITY",
+                    text = "HARDWARE INTEGRITY RATING",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = accent,
@@ -922,40 +1268,38 @@ fun StatsPane(
 
                 Text(
                     text = "$totalClicks",
-                    fontSize = 48.sp,
+                    fontSize = 54.sp,
                     fontWeight = FontWeight.Black,
-                    color = if (theme == "ELITE") Color(0xFF00FF66) else Color.DarkGray,
+                    color = text,
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
 
                 Text(
-                    text = "Total physical clicks saved on your broken hardware buttons!",
+                    text = "Total mechanical clicks saved over damaged button hardware!",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = subtext,
                     textAlign = TextAlign.Center,
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
             }
         }
 
-        // Custom Canvas based bar charts
+        // Custom Canvas based distribution metric bar layouts
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (theme == "ELITE") Color(0xFF050805) else MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            shape = RoundedCornerShape(28.dp),
             border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
                     "Usage Metrics Distribution",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = accent,
+                    color = text,
                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                 )
 
@@ -967,23 +1311,22 @@ fun StatsPane(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "No activities registered yet.\nTry triggering simulator views on Dashboard!",
+                            "No activities registered yet.\nTry triggering simulated commands in the Dashboard sandbox!",
                             fontSize = 12.sp,
-                            color = Color.Gray,
+                            color = subtext,
                             textAlign = TextAlign.Center,
                             fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                         )
                     }
                 } else {
-                    // Render simple custom bars in Canvas!
-                    val sortedStats = stats.filter { it.count > 0 }.sortedByDescending { it.count }
-                    val maxItem = sortedStats.maxOfOrNull { it.count } ?: 1
+                    val sortedStats = stats.filter { it.count >= 0 }.sortedByDescending { it.count }
+                    val maxItem = (sortedStats.maxOfOrNull { it.count } ?: 1).coerceAtLeast(1)
 
                     sortedStats.forEach { stat ->
                         val ratio = stat.count.toFloat() / maxItem
 
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.padding(vertical = 4.dp)
                         ) {
                             Row(
@@ -992,35 +1335,29 @@ fun StatsPane(
                             ) {
                                 Text(
                                     stat.actionName,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (theme == "ELITE") Color.LightGray else Color.Black,
+                                    color = text,
                                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                                 )
                                 Text(
-                                    "${stat.count} clicks",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    "${stat.count} Saved",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
                                     color = accent,
                                     fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                                 )
                             }
 
-                            // Dynamic styled custom bars using Compose Canvas
-                            val barColor = when (theme) {
-                                "MINIMAL" -> Color.DarkGray
-                                "ELITE" -> Color(0xFF00FF66)
-                                else -> Color(0xFF8B5CF6)
-                            }
+                            // Horizontal Canvas styled metrics track bar
+                            val barColor = accent
 
                             Canvas(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(14.dp)
                                     .clip(RoundedCornerShape(7.dp))
-                                    .background(
-                                        if (theme == "ELITE") Color(0xFF0B140E) else Color(0xFFF1F5F9)
-                                    )
+                                    .background(Color.White.copy(alpha = 0.03f))
                             ) {
                                 val width = size.width * ratio
                                 drawRoundRect(
@@ -1034,36 +1371,30 @@ fun StatsPane(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = accent.copy(alpha = 0.15f))
 
                 Button(
                     onClick = { viewModel.clearStats() },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (theme == "ELITE") Color(0xFF230D0D) else Color(0xFFFEF2F2),
+                        containerColor = Color(0xFF2C1C1C),
                         contentColor = Color(0xFFEF4444)
                     ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
                 ) {
                     Icon(Icons.Default.Delete, "Clear")
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "Reset Impact Log Statistics",
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                     )
                 }
             }
         }
-    }
-}
-
-fun getThemeAccentColor(theme: String): Color {
-    return when (theme) {
-        "MINIMAL" -> Color(0xFF2E2E2E)
-        "ELITE" -> Color(0xFF00FF66) // Neon hacker green
-        else -> Color(0xFF9C27B0) // Gamified vibrant orchid purple
     }
 }

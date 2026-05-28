@@ -55,13 +55,20 @@ class AssistiveTouchService : AccessibilityService() {
     private lateinit var repository: LocalRepository
 
     private var floatingComposeView: ComposeView? = null
+    private var leftEdgeComposeView: ComposeView? = null
+    private var rightEdgeComposeView: ComposeView? = null
     private var panelComposeView: ComposeView? = null
 
     private var floatingParams = WindowManager.LayoutParams()
+    private var leftEdgeParams = WindowManager.LayoutParams()
+    private var rightEdgeParams = WindowManager.LayoutParams()
+
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     private var floatingViewTreeOwner: ServiceViewTreeOwner? = null
+    private var leftEdgeViewTreeOwner: ServiceViewTreeOwner? = null
+    private var rightEdgeViewTreeOwner: ServiceViewTreeOwner? = null
     private var panelViewTreeOwner: ServiceViewTreeOwner? = null
 
     // Cached settings to apply to overlays
@@ -90,6 +97,32 @@ class AssistiveTouchService : AccessibilityService() {
             y = 500
         }
 
+        // Configure layout parameters for Left Edge Gesture trigger zone
+        leftEdgeParams = WindowManager.LayoutParams(
+            24, // placeholder, dynamically updated
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = 0
+        }
+
+        // Configure layout parameters for Right Edge Gesture trigger zone
+        rightEdgeParams = WindowManager.LayoutParams(
+            24, // placeholder, dynamically updated
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = 0
+            y = 0
+        }
+
         // Initialize floating button view tree owner
         val owner = ServiceViewTreeOwner().apply { start() }
         floatingViewTreeOwner = owner
@@ -102,9 +135,35 @@ class AssistiveTouchService : AccessibilityService() {
             setViewTreeSavedStateRegistryOwner(owner)
         }
 
+        // Initialize Left Edge view tree owner
+        val leftOwner = ServiceViewTreeOwner().apply { start() }
+        leftEdgeViewTreeOwner = leftOwner
+
+        // Initialize Left Edge view tree
+        leftEdgeComposeView = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setViewTreeLifecycleOwner(leftOwner)
+            setViewTreeViewModelStoreOwner(leftOwner)
+            setViewTreeSavedStateRegistryOwner(leftOwner)
+        }
+
+        // Initialize Right Edge view tree owner
+        val rightOwner = ServiceViewTreeOwner().apply { start() }
+        rightEdgeViewTreeOwner = rightOwner
+
+        // Initialize Right Edge view tree
+        rightEdgeComposeView = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setViewTreeLifecycleOwner(rightOwner)
+            setViewTreeViewModelStoreOwner(rightOwner)
+            setViewTreeSavedStateRegistryOwner(rightOwner)
+        }
+
         // Add to WindowManager
         try {
             windowManager.addView(floatingComposeView, floatingParams)
+            windowManager.addView(leftEdgeComposeView, leftEdgeParams)
+            windowManager.addView(rightEdgeComposeView, rightEdgeParams)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -115,7 +174,107 @@ class AssistiveTouchService : AccessibilityService() {
                 val safeSettings = settings ?: SettingsEntity()
                 currentSettings = safeSettings
                 updateFloatingButtonUI(safeSettings)
+                updateLeftEdgeUI(safeSettings)
+                updateRightEdgeUI(safeSettings)
             }
+        }
+    }
+
+    private fun updateLeftEdgeUI(settings: SettingsEntity) {
+        val view = leftEdgeComposeView ?: return
+        val theme = settings.themeName
+        val accent = getThemeAccentColor(theme)
+        val opacity = settings.buttonOpacity
+        val edgeWidthPx = (settings.buttonSizeDp * resources.displayMetrics.density * 0.35f).toInt().coerceAtLeast(15)
+
+        leftEdgeParams.width = edgeWidthPx
+        try {
+            windowManager.updateViewLayout(view, leftEdgeParams)
+        } catch (e: Exception) {}
+
+        view.setContent {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width((settings.buttonSizeDp * 0.35f).dp)
+                    .pointerInput(Unit) {
+                        var totalDragX = 0f
+                        detectDragGestures(
+                            onDragStart = { totalDragX = 0f },
+                            onDragEnd = {
+                                if (totalDragX > 25f) {
+                                    triggerVibrationIfNeeded()
+                                    showActionPanel()
+                                } else if (kotlin.math.abs(totalDragX) < 15f) {
+                                    triggerVibrationIfNeeded()
+                                    performSystemAction("BACK")
+                                }
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                totalDragX += dragAmount.x
+                            }
+                        )
+                    }
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                accent.copy(alpha = 0.35f * opacity),
+                                accent.copy(alpha = 0.1f * opacity),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+        }
+    }
+
+    private fun updateRightEdgeUI(settings: SettingsEntity) {
+        val view = rightEdgeComposeView ?: return
+        val theme = settings.themeName
+        val accent = getThemeAccentColor(theme)
+        val opacity = settings.buttonOpacity
+        val edgeWidthPx = (settings.buttonSizeDp * resources.displayMetrics.density * 0.35f).toInt().coerceAtLeast(15)
+
+        rightEdgeParams.width = edgeWidthPx
+        try {
+            windowManager.updateViewLayout(view, rightEdgeParams)
+        } catch (e: Exception) {}
+
+        view.setContent {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width((settings.buttonSizeDp * 0.35f).dp)
+                    .pointerInput(Unit) {
+                        var totalDragX = 0f
+                        detectDragGestures(
+                            onDragStart = { totalDragX = 0f },
+                            onDragEnd = {
+                                if (totalDragX < -25f) {
+                                    triggerVibrationIfNeeded()
+                                    showActionPanel()
+                                } else if (kotlin.math.abs(totalDragX) < 15f) {
+                                    triggerVibrationIfNeeded()
+                                    performSystemAction("HOME")
+                                }
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                totalDragX += dragAmount.x
+                            }
+                        )
+                    }
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                accent.copy(alpha = 0.1f * opacity),
+                                accent.copy(alpha = 0.35f * opacity)
+                            )
+                        )
+                    )
+            )
         }
     }
 
@@ -271,7 +430,7 @@ class AssistiveTouchService : AccessibilityService() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
+                    .background(Color.Black.copy(alpha = 0.65f))
                     .pointerInput(Unit) {
                         // Clicking backdrop closes the overlay
                         detectDragGestures(onDrag = { _, _ -> }, onDragEnd = { hideActionPanel() })
@@ -285,23 +444,27 @@ class AssistiveTouchService : AccessibilityService() {
                         .width(320.dp)
                         .padding(16.dp)
                         .clickable(enabled = false) {}
-                        .shadow(16.dp, RoundedCornerShape(24.dp))
-                        .clip(RoundedCornerShape(24.dp))
+                        .shadow(24.dp, RoundedCornerShape(28.dp))
+                        .clip(RoundedCornerShape(28.dp))
                         .background(
-                            if (theme == "ELITE") Color(0xFF0C130D) else MaterialTheme.colorScheme.surface
+                            when (theme) {
+                                "MINIMAL" -> Color(0xFF16161A)
+                                "ELITE" -> Color(0xFF060A07)
+                                else -> Color(0xFF151025)
+                            }
                         )
                         .border(
                             BorderStroke(
-                                2.dp,
+                                1.5.dp,
                                 when (theme) {
+                                    "MINIMAL" -> Color(0xFFABC8F7).copy(alpha = 0.5f)
                                     "ELITE" -> Color(0xFF00FF66)
-                                    "GAMIFIED" -> Color(0xFFFF4081)
-                                    else -> Color.DarkGray
+                                    else -> Color(0xFFD495FF).copy(alpha = 0.5f)
                                 }
                             ),
-                            RoundedCornerShape(24.dp)
+                            RoundedCornerShape(28.dp)
                         )
-                        .padding(20.dp)
+                        .padding(24.dp)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -311,22 +474,26 @@ class AssistiveTouchService : AccessibilityService() {
                         Text(
                             text = when (theme) {
                                 "MINIMAL" -> "NAVIGATION"
-                                "ELITE" -> "SYSTEM OVERRIDE v1.0"
-                                else -> "🎮 Savior Touch Panel"
+                                "ELITE" -> "SYSTEM OVERRIDE v2.0"
+                                else -> "Savior Touch Panel"
                             },
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = when (theme) {
+                                "MINIMAL" -> Color(0xFFABC8F7)
                                 "ELITE" -> Color(0xFF00FF66)
-                                "GAMIFIED" -> Color(0xFF8B5CF6)
-                                else -> MaterialTheme.colorScheme.onSurface
+                                else -> Color(0xFFD495FF)
                             },
                             fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default,
                             textAlign = TextAlign.Center
                         )
 
                         Divider(
-                            color = if (theme == "ELITE") Color(0xFF00FF66).copy(alpha = 0.3f) else Color.LightGray.copy(alpha = 0.4f),
+                            color = when (theme) {
+                                "ELITE" -> Color(0xFF00FF66).copy(alpha = 0.3f)
+                                "MINIMAL" -> Color(0xFFABC8F7).copy(alpha = 0.15f)
+                                else -> Color(0xFFD495FF).copy(alpha = 0.15f)
+                            },
                             thickness = 1.dp
                         )
 
@@ -371,19 +538,24 @@ class AssistiveTouchService : AccessibilityService() {
                             onClick = { hideActionPanel() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = when (theme) {
+                                    "MINIMAL" -> Color(0xFF2E2E35)
                                     "ELITE" -> Color(0xFF1E3523)
-                                    "GAMIFIED" -> Color(0xFF8B5CF6)
-                                    else -> MaterialTheme.colorScheme.secondary
+                                    else -> Color(0xFF3B1E5C)
+                                },
+                                contentColor = when (theme) {
+                                    "MINIMAL" -> Color(0xFFABC8F7)
+                                    "ELITE" -> Color(0xFF00FF66)
+                                    else -> Color(0xFFD495FF)
                                 }
                             ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().height(42.dp)
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
                         ) {
                             Text(
-                                "Minimize",
+                                "Minimize Panel",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (theme == "ELITE") Color(0xFF00FF66) else Color.White
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = if (theme == "ELITE") FontFamily.Monospace else FontFamily.Default
                             )
                         }
                     }
@@ -406,30 +578,34 @@ class AssistiveTouchService : AccessibilityService() {
         theme: String,
         onClick: () -> Unit
     ) {
-        val shape = if (theme == "GAMIFIED") RoundedCornerShape(16.dp) else RoundedCornerShape(8.dp)
+        val shape = RoundedCornerShape(20.dp)
         val containerColor = when (theme) {
-            "MINIMAL" -> Color(0xFFECECEC)
-            "ELITE" -> Color(0xFF060B07)
-            else -> Color(0xFFF3E8FF) // Gamified pastel-purple
+            "MINIMAL" -> Color(0xFF282830)
+            "ELITE" -> Color(0xFF060D08)
+            else -> Color(0xFF251A3C)
         }
         val iconColor = when (theme) {
-            "MINIMAL" -> Color.Black
+            "MINIMAL" -> Color(0xFFABC8F7)
             "ELITE" -> Color(0xFF00FF66)
-            else -> Color(0xFF7C3AED)
+            else -> Color(0xFFD495FF)
         }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
-                .width(82.dp)
-                .height(86.dp)
+                .width(84.dp)
+                .height(88.dp)
                 .clip(shape)
                 .background(containerColor)
                 .border(
                     BorderStroke(
                         1.dp,
-                        if (theme == "ELITE") Color(0xFF00FF66).copy(alpha = 0.5f) else Color.Transparent
+                        when (theme) {
+                            "MINIMAL" -> Color(0xFFABC8F7).copy(alpha = 0.15f)
+                            "ELITE" -> Color(0xFF00FF66).copy(alpha = 0.4f)
+                            else -> Color(0xFFD495FF).copy(alpha = 0.15f)
+                        }
                     ),
                     shape
                 )
@@ -447,7 +623,7 @@ class AssistiveTouchService : AccessibilityService() {
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (theme == "ELITE") Color(0xFF00FF66) else Color.DarkGray,
+                color = if (theme == "ELITE") Color(0xFF00FF66) else Color.White,
                 textAlign = TextAlign.Center,
                 lineHeight = 13.sp,
                 maxLines = 2,
@@ -566,11 +742,33 @@ class AssistiveTouchService : AccessibilityService() {
         floatingViewTreeOwner?.stop()
         floatingViewTreeOwner = null
 
+        leftEdgeViewTreeOwner?.stop()
+        leftEdgeViewTreeOwner = null
+
+        rightEdgeViewTreeOwner?.stop()
+        rightEdgeViewTreeOwner = null
+
         val fView = floatingComposeView
         floatingComposeView = null
         if (fView != null) {
             try {
                 windowManager.removeView(fView)
+            } catch (e: Exception) {}
+        }
+
+        val lView = leftEdgeComposeView
+        leftEdgeComposeView = null
+        if (lView != null) {
+            try {
+                windowManager.removeView(lView)
+            } catch (e: Exception) {}
+        }
+
+        val rView = rightEdgeComposeView
+        rightEdgeComposeView = null
+        if (rView != null) {
+            try {
+                windowManager.removeView(rView)
             } catch (e: Exception) {}
         }
     }
