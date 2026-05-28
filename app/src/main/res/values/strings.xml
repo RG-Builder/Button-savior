@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Button Savior</string>
+    <string name="accessibility_service_description">Draws a touch-based navigation overlay on top of screens, providing easy-to-use virtual buttons for Back, Home, Recents, Notifications, and system controls. Helps users navigate when physical hardware buttons are broken or unresponsive.</string>
+</resources>

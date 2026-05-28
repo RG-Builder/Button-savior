@@ -1,0 +1,6 @@
+{
+  "name": "Button Savior",
+  "description": "Assistive navigation overlay helper for users with broken hardware buttons.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
